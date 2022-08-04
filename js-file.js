@@ -8,6 +8,7 @@ let startButton = document.querySelector('.start');
 let buttons = document.getElementsByClassName('button');
 let score = document.querySelector('.scoreboard');
 let reset = document.querySelector('.reset');
+let impossible = document.querySelector('.impossible');
 let counter = 0;
 let xWins = 0;
 let oWins = 0;
@@ -17,11 +18,98 @@ let turn = 'X';
 
 
 // ***************************
+// ARTIFICIAL INTELLIGENCE
+// ***************************
+
+impossible.addEventListener('click', () => {
+    endGame(); startGame(3); resetScore();
+
+    board = [['', '', ''], ['', '', ''], ['', '', '']];
+    let dummy = new node(9, board, 0, 0, 'X', -1);
+    let sum = 0;
+    console.log(dummy.children);
+    for (let i = 0; i < dummy.children.length; i++) {
+        sum += dummy.children[i].xWins + dummy.children[i].oWins + dummy.children[i].draw;
+    }
+    console.log(sum);
+});
+
+function node(options, board, row, col, turn, id) {
+    this.xWins = 0; this.oWins = 0; this.draw = 0;
+    this.row = row; this.col = col;
+    this.isX = false; this.isO = false; this.isDraw = false;
+    this.options = options; this.board = board;
+    this.id = id;
+    this.children = [];
+
+    if (turn === 'X') {
+      this.turn = 'O';
+    } else {
+      this.turn = 'X';
+    }
+
+    if (this.options === 9) {
+        getChildren(this);
+    } else {
+        this.board[row][col] = this.turn;
+        if (this.options < 5 && (checkCol(this.id, this.board) || checkRow(this.id, this.board) || checkDiag(this.id, this.board))) {
+            if (this.turn === 'X') {
+                this.isX = true;
+                this.xWins++;
+            } else {
+                this.isO = true;
+                this.oWins++;
+            } 
+        } else if (this.options === 0) {
+            this.isDraw = true;
+            this.draw += 1;
+        }
+    }
+}
+
+function getChildren(parent) {
+    if (parent.isX || parent.isO || parent.isDraw) {
+        return;
+    }
+    let index = 0;
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            if (parent.board[i][j] === '') {
+                let child = new node(parent.options - 1, copyBoard(parent.board), i, j, parent.turn, i * 3 + j);
+                getChildren(child);
+                parent.children[index] = child;
+                updateParent(parent, child);
+                index++;
+            }
+        }
+    }
+}
+
+function updateParent(parent, child) {
+    parent.xWins += child.xWins;
+    parent.oWins += child.oWins;
+    parent.draw += child.draw;
+}
+
+function copyBoard(board) {
+    let copy = [['','',''],['','',''],['','','']];
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            copy[i][j] = board[i][j];
+        }
+    }
+    return copy;
+}
+
+// ***************************
 // INITIAL GRID SETUP
 // ***************************
 
 makeGrid();
-startButton.addEventListener('click', startGame);
+
+startButton.addEventListener('click', () => {
+    startGame(0);
+});
 
 function makeGrid() { 
     let counter = 0;
@@ -46,9 +134,9 @@ function makeGrid() {
 // STARTING AND ENDING GAME
 // ***************************
 
-function startGame() {
+function startGame(index) {
     endGame();
-    buttons[0].style.backgroundColor = "#DD6B4D";
+    buttons[index].style.backgroundColor = "#DD6B4D";
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].addEventListener('mouseup', fillIn);
         smallBoxes[j].firstElementChild.classList.remove('blink_me_winner');
@@ -124,10 +212,10 @@ function fillIn(e) {
 
 function checkWinner(e) {
     let num = parseInt(e.target.getAttribute('id'));
-    return counter > 4 && (checkRow(num) || checkCol(num) || checkDiag(num));
+    return counter > 4 && (checkRow(num, board) || checkCol(num, board) || checkDiag(num, board));
 }
 
-function checkRow(num) {
+function checkRow(num, board) {
     if (board[0][0] === board[0][1] && board[0][1] === board[0][2] && board[0][0] !== '') {
         blink(0); blink(1); blink(2);
         return true;
@@ -140,7 +228,7 @@ function checkRow(num) {
     }
     return false;
 }
-function checkCol(num) {
+function checkCol(num, board) {
     if (board[0][0] === board[1][0] && board[1][0] === board[2][0] && board[0][0] !== '') {
         blink(0); blink(3); blink(6);
         return true;
@@ -153,7 +241,7 @@ function checkCol(num) {
     }
     return false;
 }
-function checkDiag(num) {
+function checkDiag(num, board) {
     if (num % 2 === 0) {
         if (board[0][0] === board[1][1] && board[1][1] === board[2][2] && board[0][0] !== '') {
             blink(0); blink(4); blink(8);
@@ -177,3 +265,8 @@ function resetScore() {
     score.firstElementChild.innerHTML = "Player X: " + xWins;
     score.lastElementChild.innerHTML = "Player O: " + oWins;
 }
+
+
+
+
+
