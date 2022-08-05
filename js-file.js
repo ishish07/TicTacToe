@@ -27,12 +27,37 @@ impossible.addEventListener('click', () => {
     board = [['', '', ''], ['', '', ''], ['', '', '']];
     let dummy = new node(9, board, 0, 0, 'X', -1);
     let sum = 0;
-    console.log(dummy.children);
-    for (let i = 0; i < dummy.children.length; i++) {
-        sum += dummy.children[i].xWins + dummy.children[i].oWins + dummy.children[i].draw;
-    }
-    console.log(sum);
+    console.log(dummy);
+    
 });
+
+function minimax(position, maximizingPlayer) {
+    if (position.isX) {
+        return 1;
+    } 
+    if (position.isO) {
+        return -1;
+    }
+    if (position.isDraw) {
+        return 0;
+    }
+    if (maximizingPlayer) {
+        let maxEval = -100;
+        for (let i = 0; i < position.children.length; i++) {
+            let currEval = minimax(position.children[i], false);
+            maxEval = Math.max(maxEval, currEval);
+        }
+        position.minimax = maxEval;
+    } else {
+        let minEval = 100;
+        for (let i = 0; i < position.children.length; i++) {
+            let currEval = minimax(position.children[i], true);
+            minEval = Math.min(minEval, currEval);
+        }
+        position.minimax = minEval;
+    }
+    return position.minimax;
+}
 
 function node(options, board, row, col, turn, id) {
     this.xWins = 0; this.oWins = 0; this.draw = 0;
@@ -41,29 +66,13 @@ function node(options, board, row, col, turn, id) {
     this.options = options; this.board = board;
     this.id = id;
     this.children = [];
-
-    if (turn === 'X') {
-      this.turn = 'O';
-    } else {
-      this.turn = 'X';
-    }
-
+    this.turn = getTurn(turn);
+    this.minimax = 0;
     if (this.options === 9) {
         getChildren(this);
+        minimax(this,true);
     } else {
-        this.board[row][col] = this.turn;
-        if (this.options < 5 && (checkCol(this.id, this.board) || checkRow(this.id, this.board) || checkDiag(this.id, this.board))) {
-            if (this.turn === 'X') {
-                this.isX = true;
-                this.xWins++;
-            } else {
-                this.isO = true;
-                this.oWins++;
-            } 
-        } else if (this.options === 0) {
-            this.isDraw = true;
-            this.draw += 1;
-        }
+        evaluate(this);
     }
 }
 
@@ -83,6 +92,31 @@ function getChildren(parent) {
             }
         }
     }
+}
+
+function evaluate(node) {
+    node.board[node.row][node.col] = node.turn;
+    if (node.options < 5 && (checkCol(node.id, node.board) || 
+                             checkRow(node.id, node.board) || 
+                             checkDiag(node.id, node.board))) {
+        if (node.turn === 'X') {
+            node.isX = true;
+            node.xWins++;
+        } else {
+            node.isO = true;
+            node.oWins++;
+        } 
+    } else if (node.options === 0) {
+        node.isDraw = true;
+        node.draw += 1;
+    }
+}
+
+function getTurn(turn) {
+    if (turn === 'X') {
+        return 'O';
+    }
+    return 'X';
 }
 
 function updateParent(parent, child) {
@@ -106,7 +140,6 @@ function copyBoard(board) {
 // ***************************
 
 makeGrid();
-
 startButton.addEventListener('click', () => {
     startGame(0);
 });
