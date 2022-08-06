@@ -8,11 +8,15 @@ let startButton = document.querySelector('.start');
 let buttons = document.getElementsByClassName('button');
 let score = document.querySelector('.scoreboard');
 let reset = document.querySelector('.reset');
+let difficulty = document.querySelector('.difficulty');
+let easy = document.querySelector('.easy');
+let medium = document.querySelector('.medium');
 let impossible = document.querySelector('.impossible');
+let aiFirst = document.querySelector('.ai-first');
 let counter = 0;
 let xWins = 0;
 let oWins = 0;
-
+let isAIFirst = false;
 let board = [['', '', ''], ['', '', ''], ['', '', '']];
 let turn = 'X';
 
@@ -21,15 +25,48 @@ let turn = 'X';
 // ARTIFICIAL INTELLIGENCE
 // ***************************
 
-impossible.addEventListener('click', () => {
-    endGame(); startGame(3); resetScore();
+function startAIGame(ai, human) {
 
+}
+
+aiFirst.addEventListener('click', () => {
+    aiFirst.classList.toggle('navy');
+    aiFirst.classList.toggle('orange');
+    isAIFirst = !isAIFirst;
+});
+
+easy.addEventListener('click', () => {
+    buttons[3].classList.add('orange');
+    buttons[3].classList.remove('navy');
+    startGame(3); resetScore();
+    changeDiffBtn('EASY');
     board = [['', '', ''], ['', '', ''], ['', '', '']];
     let dummy = new node(9, board, 0, 0, 'X', -1);
-    let sum = 0;
+    console.log(dummy);
+});
+medium.addEventListener('click', () => {
+    buttons[3].classList.add('orange');
+    buttons[3].classList.remove('navy');
+    startGame(3); resetScore();
+    changeDiffBtn('MEDIUM');
+    board = [['', '', ''], ['', '', ''], ['', '', '']];
+    let dummy = new node(9, board, 0, 0, 'X', -1);
+    console.log(dummy);
+});
+impossible.addEventListener('click', () => {
+    buttons[3].classList.add('orange');
+    buttons[3].classList.remove('navy');
+    resetScore(); startAIGame();
+    changeDiffBtn('IMPOSSIBLE');
+    board = [['', '', ''], ['', '', ''], ['', '', '']];
+    let dummy = new node(9, board, 0, 0, 'X', -1);
+    let human = new node(9, board, 0, 0, 'X', -1);
     console.log(dummy);
     
 });
+function changeDiffBtn(level) {
+    difficulty.textContent = level;
+}
 
 function minimax(position, maximizingPlayer) {
     if (position.isX) {
@@ -68,7 +105,7 @@ function node(options, board, row, col, turn, id) {
     this.children = [];
     this.turn = getTurn(turn);
     this.minimax = 0;
-    if (this.options === 9) {
+    if (this.id == -1) {
         getChildren(this);
         minimax(this,true);
     } else {
@@ -140,11 +177,13 @@ function copyBoard(board) {
 // ***************************
 
 makeGrid();
+startGame(0);
 startButton.addEventListener('click', () => {
     startGame(0);
 });
 
 function makeGrid() { 
+    resetScore();
     let counter = 0;
     for (let row = 0; row < 3; row++) {
         let rowDiv = document.createElement('div');
@@ -169,7 +208,8 @@ function makeGrid() {
 
 function startGame(index) {
     endGame();
-    buttons[index].style.backgroundColor = "#DD6B4D";
+    buttons[index].classList.add('orange');
+    buttons[index].classList.remove('navy');
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].addEventListener('mouseup', fillIn);
         smallBoxes[j].firstElementChild.classList.remove('blink_me_winner');
@@ -185,8 +225,8 @@ function draw() {
 }
 
 function endGame() {
-    score.firstElementChild.innerHTML = "Player X: " + xWins;
-    score.lastElementChild.innerHTML = "Player O: " + oWins;
+    score.firstElementChild.innerHTML = "PLAYER X: " + xWins;
+    score.lastElementChild.innerHTML = "PLAYER O: " + oWins;
    // score.innerHTML = "Player X: " + xWins + "     " + "Player O: " + oWins;
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].removeEventListener('mouseup', fillIn);
@@ -199,8 +239,9 @@ function endGame() {
         }
     }
     for (let i = 0; i < buttons.length; i++) {
-        buttons[i].style.backgroundColor = "#183661"
+        buttons[i].classList.add('navy');
     }
+    buttons[3].textContent = "DIFFICULTY";
     counter = 0;
     turn = 'X';
 }
@@ -291,13 +332,16 @@ function blink(num) {
     smallBoxes[num].firstElementChild.classList.add('blink_me_winner');
 }
 
-reset.addEventListener('click', resetScore);
+
 function resetScore() {
     xWins = 0;
     oWins = 0;
     score.firstElementChild.innerHTML = "Player X: " + xWins;
     score.lastElementChild.innerHTML = "Player O: " + oWins;
 }
+reset.addEventListener('click', () => {
+    resetScore();
+});
 
 
 
