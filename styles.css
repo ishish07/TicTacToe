@@ -76,9 +76,6 @@ body {
 .orange {
     background-color: #dd6b4d;
 }
-.navy {
-    background-color: #183661;
-}
 /*
 .reset {
     display: flex;
@@ -110,6 +107,10 @@ body {
     color: #dae1e7;
     font-family: sans-serif;
     font-weight: bold;
+}
+
+.trial {
+    color: purple;
 }
 
 .blink_me_winner {
