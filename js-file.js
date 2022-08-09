@@ -13,9 +13,14 @@ let easy = document.querySelector('.easy');
 let medium = document.querySelector('.medium');
 let impossible = document.querySelector('.impossible');
 let aiFirst = document.querySelector('.ai-first');
+
 let counter = 0;
 let xWins = 0;
 let oWins = 0;
+let aiScore = 0;
+let humanScore = 0;
+let aiGame = false;
+let normalGame = false;
 let isAIFirst = false;
 let mm = -1;
 let board = [['', '', ''], ['', '', ''], ['', '', '']];
@@ -56,6 +61,8 @@ function makeGrid() {
 // ***************************
 
 function startAIGame(ai) {
+    normalGame = false;
+    aiGame = true;
     if (ai.isTurn) {
         aiFirst.removeEventListener('click', first);
         disableBoard();
@@ -66,22 +73,11 @@ function startAIGame(ai) {
     } else {
         enableBoard();
     }
-    /*while (true) {
-        if (ai.isTurn) { //if it is the AI's turn, make a move 
-            disableBoard();
-            makeMove(ai, ai.children[0]);
-            ai.isTurn = false;
-            enableBoard();
-        } else if (ai.isX || ai.isO || ai.isDraw) {
-            break;
-        }
-    }*/
 }
 
 function endAIGame() {
-    score.firstElementChild.innerHTML = "PLAYER X: " + xWins;
-    score.lastElementChild.innerHTML = "PLAYER O: " + oWins;
-   // score.innerHTML = "Player X: " + xWins + "     " + "Player O: " + oWins;
+    score.firstElementChild.innerHTML = "AI Player: " + aiScore;
+    score.lastElementChild.innerHTML = "Human Player: " + humanScore;
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].removeEventListener('mouseup', fillIn);
         if (j < 3) {
@@ -110,6 +106,11 @@ function makeMove(childNode) {
     counter++;
     console.log(ai);
     if (checkCol(board) || checkRow(board) || checkDiag(board)) {
+        if (ai.isX || ai.isO) {
+            aiScore++;
+        } else {
+            humanScore++;
+        }
         disableBoard();
         endAIGame();
         buttons[4].classList.remove('orange');
@@ -121,6 +122,7 @@ function makeMove(childNode) {
         buttons[4].classList.remove('orange');
         return;
     }
+    enableBoard();
 }
 
 function find1(child) {
@@ -250,13 +252,11 @@ function findBestMove() {
             }
         }
     }
-    //return ai.children[0];
 }
 
 function fillInAI(e) {
     aiFirst.removeEventListener('click', first);
     disableBoard();
-    //smallBoxes[e.target.id].removeEventListener()
     counter++;
     let num = parseInt(e.target.getAttribute('id'));
     if (num < 3) {
@@ -289,9 +289,9 @@ function fillInAI(e) {
     turn = getTurn(turn);
     if (checkCol(board) || checkRow(board) || checkDiag(board)) {
         if (e.target.firstElementChild.textContent === 'X') {
-            xWins++;
+            ai.xScore++;
         } else {
-            oWins++;
+            ai.oScore++;
         }
        endAIGame();
        return;
@@ -303,7 +303,6 @@ function fillInAI(e) {
     ai.isTurn = true;
     let move = findBestMove();
     makeMove(move);
-    enableBoard();
 }
 
 function first(ai) {
@@ -326,7 +325,7 @@ impossible.addEventListener('click', () => {
     aiFirst.addEventListener('click', first);
     makeButtonOrange(2);
     difficulty.textContent = "IMPOSSIBLE";
-    resetScore();
+    console.log(buttons);
     console.log(ai);
     clearUIBoard();
     disableBoard();
@@ -346,6 +345,7 @@ function enableBoard() {
 function disableBoard() {
     for (let i = 0; i < 9; i++) {
         smallBoxes[i].removeEventListener('mouseup', fillIn);
+        smallBoxes[i].removeEventListener('mouseup', fillInAI);
     }
 }
 function makeButtonOrange(index) {
@@ -413,6 +413,8 @@ function node(options, board, row, col, turn, id) {
     this.turn = getTurn(turn);
     this.minimax = 0;
     this.minimaxSum = 0;
+    this.xScore = 0;
+    this.oScore = 0;
     this.isTurn = false;
     if (this.id == -1) {
         getChildren(this);
@@ -496,10 +498,13 @@ function copyBoard(board) {
 // ***************************
 
 function startGame(index) {
+    normalGame = true;
+    aiGame = false;
     endGame();
     makeButtonOrange(index);
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].addEventListener('mouseup', fillIn);
+        smallBoxes[j].removeEventListener('mouseup', fillInAI);
         smallBoxes[j].firstElementChild.classList.remove('blink_me_winner');smallBoxes[j].firstElementChild.classList.remove('blink_me_draw');
         smallBoxes[j].firstElementChild.textContent = "";
     } 
@@ -514,7 +519,6 @@ function draw() {
 function endGame() {
     score.firstElementChild.innerHTML = "PLAYER X: " + xWins;
     score.lastElementChild.innerHTML = "PLAYER O: " + oWins;
-   // score.innerHTML = "Player X: " + xWins + "     " + "Player O: " + oWins;
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].removeEventListener('mouseup', fillIn);
         if (j < 3) {
@@ -524,9 +528,6 @@ function endGame() {
         } else {
             board[2][j % 6] = '';
         }
-    }
-    for (let i = 0; i < buttons.length; i++) {
-        //buttons[i].classList.add('navy');
     }
     buttons[3].textContent = "DIFFICULTY";
     counter = 0;
@@ -561,7 +562,6 @@ function fillIn(e) {
             oWins++;
         }
        endGame();
-       
     } else if (counter === 9) {
         draw();
         endGame();
@@ -604,15 +604,13 @@ function checkCol(board) {
     return false;
 }
 function checkDiag(board) {
-    //if (num % 2 === 0) {
-        if (board[0][0] === board[1][1] && board[1][1] === board[2][2] && board[0][0] !== '') {
-            blink(0); blink(4); blink(8);
-            return true;
-        } else if (board[0][2] === board[1][1] && board[1][1] === board[2][0] && board[0][2] !== '') {
-            blink(2); blink(4); blink(6);
-            return true;
-        }
-   // }
+    if (board[0][0] === board[1][1] && board[1][1] === board[2][2] && board[0][0] !== '') {
+        blink(0); blink(4); blink(8);
+        return true;
+    } else if (board[0][2] === board[1][1] && board[1][1] === board[2][0] && board[0][2] !== '') {
+        blink(2); blink(4); blink(6);
+        return true;
+    }
     return false;
 }
 
@@ -626,8 +624,18 @@ function resetScore() {
     score.firstElementChild.innerHTML = "Player X: " + xWins;
     score.lastElementChild.innerHTML = "Player O: " + oWins;
 }
+function resetAIScore() {
+    aiScore = 0;
+    humanScore = 0;
+    score.firstElementChild.innerHTML = "AI Player: " + 0;
+    score.lastElementChild.innerHTML = "Human Player: " + 0;
+}
 reset.addEventListener('click', () => {
-    resetScore();
+    if (aiGame) {
+        resetAIScore();
+    } else if (normalGame) {
+        resetScore();
+    }
 });
 
 
