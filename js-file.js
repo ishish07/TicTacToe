@@ -2,33 +2,42 @@
 // VARIABLE DECLARATIONS
 // ***************************
 
-let grid = document.querySelector('.grid');
-let smallBoxes = document.getElementsByClassName("small-box");
-let startButton = document.querySelector('.start');
-let buttons = document.getElementsByClassName('button');
-let score = document.querySelector('.scoreboard');
-let reset = document.querySelector('.reset');
-let difficulty = document.querySelector('.difficulty');
-let easy = document.querySelector('.easy');
-let medium = document.querySelector('.medium');
-let impossible = document.querySelector('.impossible');
-let aiFirst = document.querySelector('.ai-first');
+let grid = document.querySelector('.grid'); // holds all 9 squares inside of it
+let smallBoxes = document.getElementsByClassName("small-box"); // array of 9 squares for the board
+let startButton = document.querySelector('.start'); // start button for a 1 on 1 game
+let buttons = document.getElementsByClassName('button'); // array for the buttons on the top menu
+let score = document.querySelector('.scoreboard'); // represents the scoreboard below the grid
+let reset = document.querySelector('.reset'); // represents the reset button
+let difficulty = document.querySelector('.difficulty'); // represents the difficulty button
+let easy = document.querySelector('.easy'); // represents the easy level button under difficulty
+let medium = document.querySelector('.medium'); // represents the medium level button under difficulty
+let impossible = document.querySelector('.impossible'); // represents the impossible level button under difficulty
+let aiFirst = document.querySelector('.ai-first'); // represents the ai goes first button
+let oFirst = document.querySelector('.o-first'); // represents the player o goes first button
+let endText = document.querySelector('.end-of-game'); // represents the text displayed underneath the scoreboard
 
-let counter = 0;
-let xWins = 0;
-let oWins = 0;
-let aiScore = 0;
-let humanScore = 0;
-let aiGame = false;
-let normalGame = false;
-let isAIFirst = false;
-let mm = -1;
-let board = [['', '', ''], ['', '', ''], ['', '', '']];
-let turn = 'X';
+let counter = 0; // helps set id for nodes and detects if there is a draw - consider abandoning this variable
+let xWins = 0; // tracks the x score for 1 on 1 games
+let oWins = 0; // tracks the o score for 1 on 1 games
+let aiScore = 0; // tracks the ai score 
+let humanScore = 0; // tracks the human score
+let humanMarker = 'X'; // tracks whether the human player is X or O
+let aiMarker = 'O'; // tracks whether the ai player is X or O
+let aiGame = false; // tracks whether the current game is an ai game
+let normalGame = false; // tracks whether the current game is a 1 on 1 game
+let isAIFirst = false; // tracks whether the ai is playing first or second
+let isOFirst = false;
+let mm = -1; // sets the ai as the minimizing player as the default
+let board = [['', '', ''], ['', '', ''], ['', '', '']]; // tracks the state of the game
+let turn = 'X'; // tracks the turn of the game
+let easyLevel = false; // represents whether the AI is set to the easy level
+let mediumLevel = false; // represents whether the AI is set to the medium level
+let impossibleLevel = false; // represents whether the AI is set to the hard level
 
 // ***************************
 // INITIAL GRID SETUP
 // ***************************
+
 makeGrid();
 let ai = new node(9, board, 0, 0, 'X', -1);
 let topNodeAI = new node(9, board, 0, 0, 'X', -1);
@@ -57,16 +66,25 @@ function makeGrid() {
 }
 
 // ***************************
-// ARTIFICIAL INTELLIGENCE
+// ARTIFICIAL INTELLIGENCE - Managing Game
 // ***************************
 
 function startAIGame(ai) {
     normalGame = false;
     aiGame = true;
+    resultText('F');
     if (ai.isTurn) {
         aiFirst.removeEventListener('click', first);
+        oFirst.removeEventListener('click', oFirstButton);
         disableBoard();
-        let move = findBestMove(mm);
+        let move = ai;
+        if (impossibleLevel) {
+            move = findBestMove();
+        } else if (mediumLevel) {
+            move = findMediumMove();
+        } else {
+            move = findEasyMove();
+        }
         makeMove(move);
         enableBoard();
         ai.isTurn = false;
@@ -90,26 +108,198 @@ function endAIGame() {
     }
     buttons[3].textContent = "DIFFICULTY";
     counter = 0;
-    turn = 'X';
+    if (isOFirst) {
+        turn = 'O';
+    } else {
+        turn = 'X';
+    }
     isAIFirst = false;
     ai = topNodeAI;
     mm = -1;
     aiFirst.removeEventListener('click', first);
+    oFirst.addEventListener('click', oFirstButton);
     buttons[4].classList.remove('orange');
+    easyLevel = false;
+    mediumLevel = false;
+    impossibleLevel = false;
 }
 
+function fillInAI(e) {
+    aiFirst.removeEventListener('click', first);
+    oFirst.removeEventListener('click', oFirstButton);
+    disableBoard();
+    counter++;
+    let num = parseInt(e.target.getAttribute('id'));
+    if (num < 3) {
+        board[0][num] = turn;
+        for (let i = 0; i < ai.children.length; i++) {
+            if (ai.children[i].row === 0 && ai.children[i].col === num) {
+                ai = ai.children[i];
+            }
+        }
+    } else if (num < 6) {
+        board[1][num - 3] = turn;
+        for (let i = 0; i < ai.children.length; i++) {
+            if (ai.children[i].row === 1 && ai.children[i].col === num - 3) {
+                ai = ai.children[i];
+            }
+        }
+    } else {
+        board[2][num - 6] = turn;
+        for (let i = 0; i < ai.children.length; i++) {
+            if (ai.children[i].row === 2 && ai.children[i].col === num - 6) {
+                ai = ai.children[i];
+            }
+        }
+    }
+    smallBoxes[num].firstElementChild.textContent = turn;
+    smallBoxes[num].removeEventListener('mouseup', fillIn);
+    turn = getTurn(turn);
+    if (checkCol(board) || checkRow(board) || checkDiag(board)) {
+        if (e.target.firstElementChild.textContent === 'X') {
+            if (humanMarker === 'X') {
+                humanScore++;
+                resultText('H');
+            } else {
+                aiScore++;
+                resultText('A');
+            }
+        } else {
+            if (humanMarker === 'O') {
+                humanScore++;
+                resultText('H');
+            } else {
+                aiScore++;
+                resultText('A');
+            }
+        }
+       endAIGame();
+       return;
+    } else if (counter === 9) {
+        draw();
+        endAIGame();
+        return;
+    }
+    ai.isTurn = true;
+    let move = ai;
+    if (easyLevel) {
+        move = findEasyMove();
+    } else if (mediumLevel) {
+        move = findMediumMove();
+    } else {
+        move = findBestMove();
+    }
+    makeMove(move);
+}
+
+// ***************************
+// ARTIFICIAL INTELLIGENCE - Finding AI Moves
+// ***************************
+
+function findBestMove() {
+    if (mm === 1) { // ai is player 1 (X)
+        if (ai.minimax === 1) { // create filtered array of children that have minimax of 1 and randomly pick one of them
+            let possibleMoves = ai.children.filter(find1);
+            return randomMove(possibleMoves);
+        } else if (ai.minimax === -1) { // randomly pick move
+            return randomMove(ai.children);
+        } else { // iterate through children to find the moves with highest minimaxSum and xMinuso...
+            let possibleMoves = ai.children.filter(zero);
+            if (possibleMoves.length === 1) {
+                return possibleMoves[0];
+            }
+            possibleMoves = highestMM(possibleMoves);
+            if (possibleMoves.length > 0 && possibleMoves[0].minimaxSum > 0) {
+                return randomMove(possibleMoves);
+            } else {
+                possibleMoves = highestMinus(possibleMoves);
+                return randomMove(possibleMoves);
+            }
+        }
+    } else { // ai is player 2 (O)
+        if (ai.minimax === -1) {
+            let possibleMoves = ai.children.filter(findneg1);
+            return randomMove(possibleMoves);
+        } else if (ai.minimax === 1) {
+            return randomMove(ai.children);
+        } else {
+            let possibleMoves = ai.children.filter(zero);
+            if (possibleMoves.length === 1) {
+                return possibleMoves[0];
+            }
+            possibleMoves = lowestMM(possibleMoves);
+            if (possibleMoves.length > 0 && possibleMoves[0].minimaxSum < 0) {
+                return randomMove(possibleMoves);
+            } else {
+                possibleMoves = lowestMinus(possibleMoves);
+                return randomMove(possibleMoves);
+            }
+        }
+    }
+}
+function findMediumMove() {
+    if (mm === 1) {
+        if (ai.minimax === 1) {
+            let randomNumber = Math.floor(Math.random() * 11);
+            if (randomNumber > 2) {
+                return findBestMove();
+            }
+            return findEasyMove();
+        } else if (ai.minimax === -1) {
+            let possibleMoves = ai.children.filter(zero);
+            if (possibleMoves.length > 0) {
+                return randomMove(possibleMoves);
+            }
+            return randomMove(ai.children);
+        } else {
+            let possibleMoves = ai.children.filter(find1);
+            if (possibleMoves.length > 0) {
+                return randomMove(possibleMoves);
+            }
+            let randomNumber = Math.floor(Math.random() * 11);
+            if (randomNumber > 2) {
+                return findBestMove();
+            }
+            return findEasyMove();
+        }
+    } else {
+        if (ai.minimax === -1) {
+            let randomNumber = Math.floor(Math.random() * 11);
+            if (randomNumber > 2) {
+                return findBestMove();
+            }
+            return findEasyMove();
+        } else if (ai.minimax === 1) {
+            return findBestMove();
+        } else {
+            let possibleMoves = ai.children.filter(findneg1);
+            if (possibleMoves.length > 0) {
+                return randomMove(possibleMoves);
+            }
+            let randomNumber = Math.floor(Math.random() * 11);
+            if (randomNumber > 2) {
+                return findBestMove();
+            }
+            return findEasyMove();
+        }
+    }
+}
+function findEasyMove() {
+    return randomMove(ai.children);
+}
 function makeMove(childNode) {
     board[childNode.row][childNode.col] = turn;
     smallBoxes[childNode.row * 3 + childNode.col].firstElementChild.textContent = turn;
     ai = childNode;
     turn = getTurn(turn);
     counter++;
-    console.log(ai);
     if (checkCol(board) || checkRow(board) || checkDiag(board)) {
         if (ai.isX || ai.isO) {
             aiScore++;
+            resultText('A');
         } else {
             humanScore++;
+            resultText('H');
         }
         disableBoard();
         endAIGame();
@@ -124,9 +314,11 @@ function makeMove(childNode) {
     }
     enableBoard();
 }
-
 function find1(child) {
     return child.minimax === 1;
+}
+function zero(child) {
+    return child.minimax === 0;
 }
 function findneg1(child) {
     return child.minimax === -1;
@@ -199,111 +391,14 @@ function lowestMinus(arr) {
     }
     return toReturn;
 }
-function zero(child) {
-    if (child.minimax === 0) {
-        return child;
-    }
-}
-function findBestMove() {
-    if (mm === 1) { // ai is player 1 (X)
-        if (ai.minimax === 1) { // create filtered array of children that have minimax of 1 and randomly pick one of them
-            let possibleMoves = ai.children.filter(find1);
-            let randomIndex = Math.floor(Math.random() * possibleMoves.length);
-            return possibleMoves[randomIndex];
-        } else if (ai.minimax === -1) { // randomly pick move
-            let randomIndex = Math.floor(Math.random() * ai.children.length);
-            return ai.children[randomIndex];
-        } else { // iterate through children to find the moves with highest minimaxSum and xMinuso...
-            let zeroChildren = ai.children.filter(zero);
-            if (zeroChildren.length === 1) {
-                return zeroChildren[0];
-            }
-            let mSumArray = highestMM(zeroChildren);
-            if (mSumArray.length > 0 && mSumArray[0].minimaxSum > 0) {
-                let randomIndex = Math.floor(Math.random() * mSumArray.length);
-                return mSumArray[randomIndex];
-            } else {
-                let xMinusoArray = highestMinus(zeroChildren);
-                let randomIndex = Math.floor(Math.random() * xMinusoArray.length);
-                return xMinusoArray[randomIndex];
-            }
-        }
-    } else { // ai is player 2 (O)
-        if (ai.minimax === -1) {
-            let possibleMoves = ai.children.filter(findneg1);
-            let randomIndex = Math.floor(Math.random() * possibleMoves.length);
-            return possibleMoves[randomIndex];
-        } else if (ai.minimax === 1) {
-            let randomIndex = Math.floor(Math.random() * ai.children.length);
-            return ai.children[randomIndex];
-        } else {
-            let zeroChildren = ai.children.filter(zero);
-            if (zeroChildren.length === 1) {
-                return zeroChildren[0];
-            }
-            let mSumArray = lowestMM(zeroChildren);
-            if (mSumArray.length > 0 && mSumArray[0].minimaxSum < 0) {
-                let randomIndex = Math.floor(Math.random() * mSumArray.length);
-                return mSumArray[randomIndex];
-            } else {
-                let xMinusoArray = lowestMinus(zeroChildren);
-                let randomIndex = Math.floor(Math.random() * xMinusoArray.length);
-                return xMinusoArray[randomIndex];
-            }
-        }
-    }
+function randomMove(possibleMoves) {
+    let randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    return possibleMoves[randomIndex];
 }
 
-function fillInAI(e) {
-    aiFirst.removeEventListener('click', first);
-    disableBoard();
-    counter++;
-    let num = parseInt(e.target.getAttribute('id'));
-    if (num < 3) {
-        board[0][num] = turn;
-        for (let i = 0; i < ai.children.length; i++) {
-            if (ai.children[i].row === 0 && ai.children[i].col === num) {
-                ai = ai.children[i];
-                console.log(ai);
-            }
-        }
-    } else if (num < 6) {
-        board[1][num - 3] = turn;
-        for (let i = 0; i < ai.children.length; i++) {
-            if (ai.children[i].row === 1 && ai.children[i].col === num - 3) {
-                ai = ai.children[i];
-                console.log(ai);
-            }
-        }
-    } else {
-        board[2][num - 6] = turn;
-        for (let i = 0; i < ai.children.length; i++) {
-            if (ai.children[i].row === 2 && ai.children[i].col === num - 6) {
-                ai = ai.children[i];
-                console.log(ai);
-            }
-        }
-    }
-    smallBoxes[num].firstElementChild.textContent = turn;
-    smallBoxes[num].removeEventListener('mouseup', fillIn);
-    turn = getTurn(turn);
-    if (checkCol(board) || checkRow(board) || checkDiag(board)) {
-        if (e.target.firstElementChild.textContent === 'X') {
-            ai.xScore++;
-        } else {
-            ai.oScore++;
-        }
-       endAIGame();
-       return;
-    } else if (counter === 9) {
-        draw();
-        endAIGame();
-        return;
-    }
-    ai.isTurn = true;
-    let move = findBestMove();
-    makeMove(move);
-}
+// ***************************
+// ARTIFICIAL INTELLIGENCE - Helper Functions
+// ***************************
 
 function first(ai) {
     makeButtonOrange(4);
@@ -313,24 +408,21 @@ function first(ai) {
     mm = 1;
     startAIGame(ai);
 }
-
-easy.addEventListener('click', () => {
-    changeDiffBtn('EASY');
-});
-medium.addEventListener('click', () => {
-    changeDiffBtn('MEDIUM');
-});
-impossible.addEventListener('click', () => {
-    endAIGame();
-    aiFirst.addEventListener('click', first);
-    makeButtonOrange(2);
-    difficulty.textContent = "IMPOSSIBLE";
-    console.log(buttons);
-    console.log(ai);
-    clearUIBoard();
-    disableBoard();
-    startAIGame(ai);
-});
+function changeDifficulty(difficultyLevel) {
+    if (difficultyLevel === 'easy') {
+        easyLevel = true;
+        mediumLevel = false;
+        impossibleLevel = false;
+    } else if (difficultyLevel === 'medium') {
+        easyLevel = false;
+        mediumLevel = true;
+        impossibleLevel = false;
+    } else {
+        easyLevel = false;
+        mediumLevel = false;
+        impossibleLevel = true;
+    }
+}
 function enableBoard() {
     for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
@@ -363,7 +455,6 @@ function makeButtonOrange(index) {
         buttons[4].classList.toggle('orange');
     }
 }
-
 function clearUIBoard() {
     for (let j = 0; j < 9; j++) {
         smallBoxes[j].addEventListener('mouseup', fillIn);
@@ -372,6 +463,45 @@ function clearUIBoard() {
         smallBoxes[j].firstElementChild.textContent = "";
     }
 }
+
+// ***************************
+// ARTIFICIAL INTELLIGENCE - Event Listeners
+// ***************************
+
+easy.addEventListener('click', () => {
+    endAIGame();
+    aiFirst.addEventListener('click', first);
+    makeButtonOrange(2);
+    difficulty.textContent = "EASY";
+    clearUIBoard();
+    disableBoard();
+    changeDifficulty('easy');
+    startAIGame(ai);
+});
+medium.addEventListener('click', () => {
+    endAIGame();
+    aiFirst.addEventListener('click', first);
+    makeButtonOrange(2);
+    difficulty.textContent = "MEDIUM";
+    clearUIBoard();
+    disableBoard();
+    changeDifficulty('medium');
+    startAIGame(ai);
+});
+impossible.addEventListener('click', () => {
+    endAIGame();
+    aiFirst.addEventListener('click', first);
+    makeButtonOrange(2);
+    difficulty.textContent = "IMPOSSIBLE";
+    clearUIBoard();
+    disableBoard();
+    changeDifficulty('impossible');
+    startAIGame(ai);
+});
+
+// ***************************
+// ARTIFICIAL INTELLIGENCE - Getting All Possibilities
+// ***************************
 
 function minimax(position, maximizingPlayer) {
     if (position.isX) {
@@ -497,10 +627,28 @@ function copyBoard(board) {
 // STARTING AND ENDING GAME
 // ***************************
 
+function resultText(letter) {
+    if (letter === 'F') {
+        endText.style.display = 'none';
+        return;
+    }
+    endText.style.display = 'flex';
+    if (letter === 'X') {
+        endText.innerHTML = 'Player X Won! Click Game Mode To Play Again!';
+    } else if (letter === 'O') {
+        endText.innerHTML = 'Player O Won! Click Game Mode To Play Again!';
+    } else if (letter === 'H') {
+        endText.innerHTML = 'You Won! Click Game Mode To Play Again!';
+    } else if (letter === 'A') {
+        endText.innerHTML = 'The AI Won! Click Game Mode To Play Again!';
+    }
+}
+
 function startGame(index) {
     normalGame = true;
     aiGame = false;
     endGame();
+    resultText('F');
     makeButtonOrange(index);
     for (let j = 0; j < smallBoxes.length; j++) {
         smallBoxes[j].addEventListener('mouseup', fillIn);
@@ -531,8 +679,25 @@ function endGame() {
     }
     buttons[3].textContent = "DIFFICULTY";
     counter = 0;
-    turn = 'X';
+    if (isOFirst) {
+        turn = 'O';
+    } else {
+        turn = 'X';
+    }
+    oFirst.addEventListener('click', oFirstButton);
 }
+
+function oFirstButton() {
+    makeButtonOrange(1);
+    isOFirst = !isOFirst;
+    if (isOFirst) {
+        turn = 'O';
+    } else {
+        turn = 'X';
+    }
+}
+
+oFirst.addEventListener('click', oFirstButton);
 
 // ***************************
 // DURING THE GAME
@@ -540,6 +705,7 @@ function endGame() {
 
 function fillIn(e) {
     counter++;
+    oFirst.removeEventListener('click', oFirstButton);
     let num = parseInt(e.target.getAttribute('id'));
     if (num < 3) {
         board[0][num] = turn;
@@ -558,8 +724,10 @@ function fillIn(e) {
     if (checkWinner(e)) {
         if (e.target.firstElementChild.textContent === 'X') {
             xWins++;
+            resultText('X');
         } else {
             oWins++;
+            resultText('O');
         }
        endGame();
     } else if (counter === 9) {

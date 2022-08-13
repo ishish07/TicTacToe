@@ -109,6 +109,12 @@ body {
     font-weight: bold;
 }
 
+.end-of-game {
+    display: flex;
+    font-size: 32px;
+    color: #dd6b4d;
+}
+
 .trial {
     color: purple;
 }
